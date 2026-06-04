@@ -1,3 +1,4 @@
 # Archivo de registro de citas rechazadas
 # Formato: [YYYY-MM-DD HH:mm:ss] | idCita: X | Motivo: Y | Payload: {...}
 # Este archivo es gestionado automáticamente por la aplicación.
+[2026-06-03 21:16:50] | idCita: CITA-1001 | Motivo: Validación estructural: [especialidad: El campo especialidad es obligatorio, valor: El valor de la cita debe ser mayor a 0] | Payload: {"idCita":"CITA-1001","paciente":"Mateo Arguello","correo":"gabriel.arguello@email.com","especialidad":null,"fechaCita":"2026-06-15","sede":"Centro Norte","valor":-10.0}
