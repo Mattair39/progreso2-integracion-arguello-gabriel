@@ -1,0 +1,38 @@
+# .gitignore — Salud360 Integración
+
+# ── Maven ────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+
+# ── Spring Boot ──────────────────────────────────────────────────
+*.log
+spring-shell.log
+
+# ── IntelliJ IDEA ────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ── VS Code ──────────────────────────────────────────────────────
+.vscode/
+*.class
+
+# ── macOS ────────────────────────────────────────────────────────
+.DS_Store
+
+# ── Windows ──────────────────────────────────────────────────────
+Thumbs.db
+
+# ── Datos generados en runtime (mantener carpetas vacías en git) ──
+# Los archivos .csv y .log se generan automáticamente al ejecutar
+# No se versionan los datos de ejecución, solo la estructura
+data/outbox/*.csv
+data/errors/*.log
+
+# Excepciones: mantener el archivo inicial de cabecera en git
+!data/outbox/auditoria-citas.csv
+!data/errors/citas-rechazadas.log

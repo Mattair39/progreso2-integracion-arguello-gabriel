@@ -1,0 +1,3 @@
+# Archivo de registro de citas rechazadas
+# Formato: [YYYY-MM-DD HH:mm:ss] | idCita: X | Motivo: Y | Payload: {...}
+# Este archivo es gestionado automáticamente por la aplicación.

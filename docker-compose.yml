@@ -1,0 +1,39 @@
+version: "3.8"
+
+# ═══════════════════════════════════════════════════════════════
+#  docker-compose.yml — Salud360 Integración
+#
+#  Levanta RabbitMQ con:
+#    - Puerto AMQP:       5672  (usado por Apache Camel)
+#    - Puerto Management: 15672 (panel web admin)
+#    - Credenciales:      guest / guest
+#
+#  Uso:
+#    docker-compose up -d
+#    docker-compose down
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: salud360-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"    # Puerto AMQP (protocolo de mensajería)
+      - "15672:15672"  # Puerto Management UI (panel web)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
+    driver: local

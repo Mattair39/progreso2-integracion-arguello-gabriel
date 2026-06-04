@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Salud360 – API de Integración de Citas</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #swagger-ui .topbar { background-color: #1a5fa8; }
+    #swagger-ui .topbar .download-url-wrapper { display: none; }
+    #swagger-ui .info .title { color: #1a5fa8; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    const spec = {
+      "openapi": "3.0.3",
+      "info": {
+        "title": "Salud360 – API de Integración de Citas Médicas",
+        "description": "API REST para el registro de citas médicas en la red Salud360.<br><br>"
+          + "<strong>Patrones implementados:</strong><br>"
+          + "• <strong>Point-to-Point</strong>: Facturación → <code>billing.queue</code><br>"
+          + "• <strong>Publish/Subscribe</strong>: Evento → <code>appointments.events</code> (fanout) → <code>notifications.queue</code> + <code>analytics.queue</code><br>"
+          + "• <strong>Archivo CSV</strong>: <code>data/outbox/auditoria-citas.csv</code> para sistema legado",
+        "version": "1.0.0",
+        "contact": {
+          "name": "Equipo de Integración Salud360",
+          "email": "integracion@salud360.ec"
+        }
+      },
+      "servers": [
+        { "url": "http://localhost:8080", "description": "Servidor local de desarrollo" }
+      ],
+      "tags": [
+        { "name": "Citas Médicas", "description": "Endpoints para registro y consulta de citas" }
+      ],
+      "paths": {
+        "/api/citas": {
+          "post": {
+            "tags": ["Citas Médicas"],
+            "summary": "Registrar una nueva cita médica",
+            "description": "Valida la solicitud e inicia el flujo completo de integración: facturación (P2P), notificaciones y analítica (Pub/Sub), y generación de CSV para auditoría.",
+            "operationId": "registrarCita",
+            "requestBody": {
+              "required": true,
+              "content": {
+                "application/json": {
+                  "schema": { "$ref": "#/components/schemas/CitaRequest" },
+                  "examples": {
+                    "citaValida": {
+                      "summary": "Solicitud válida",
+                      "value": {
+                        "idCita":       "CITA-1001",
+                        "paciente":     "Ana Torres",
+                        "correo":       "ana.torres@email.com",
+                        "especialidad": "Cardiología",
+                        "fechaCita":    "2026-06-15",
+                        "sede":         "Centro Norte",
+                        "valor":        45.50
+                      }
+                    },
+                    "citaInvalida": {
+                      "summary": "Solicitud inválida (campos faltantes)",
+                      "value": {
+                        "idCita":       "",
+                        "paciente":     "",
+                        "correo":       "no-es-un-email",
+                        "especialidad": "",
+                        "fechaCita":    "",
+                        "sede":         "",
+                        "valor":        -10
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "responses": {
+              "202": {
+                "description": "Cita aceptada — flujo de integración iniciado",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/CitaAceptada" },
+                    "example": {
+                      "status":  "ACEPTADA",
+                      "idCita":  "CITA-1001",
+                      "mensaje": "Cita registrada y flujo de integración iniciado correctamente"
+                    }
+                  }
+                }
+              },
+              "400": {
+                "description": "Datos inválidos o incompletos",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/ErrorValidacion" },
+                    "example": {
+                      "status":  "RECHAZADA",
+                      "idCita":  "N/A",
+                      "errores": ["paciente: El campo paciente es obligatorio", "correo: El campo correo es obligatorio"]
+                    }
+                  }
+                }
+              },
+              "422": {
+                "description": "Error de validación de negocio",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/ErrorNegocio" },
+                    "example": {
+                      "status": "RECHAZADA",
+                      "idCita": "CITA-1001",
+                      "error":  "La fechaCita [2020-01-01] no puede ser una fecha pasada"
+                    }
+                  }
+                }
+              },
+              "500": { "description": "Error interno al procesar la integración" }
+            }
+          },
+          "get": {
+            "tags": ["Citas Médicas"],
+            "summary": "Listar citas aceptadas",
+            "description": "Devuelve las citas que han sido aceptadas y procesadas durante la sesión actual.",
+            "operationId": "listarCitas",
+            "responses": {
+              "200": {
+                "description": "Lista de citas aceptadas",
+                "content": {
+                  "application/json": {
+                    "schema": { "$ref": "#/components/schemas/ListaCitas" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "components": {
+        "schemas": {
+          "CitaRequest": {
+            "type": "object",
+            "required": ["idCita","paciente","correo","especialidad","fechaCita","sede","valor"],
+            "properties": {
+              "idCita":       { "type": "string",  "example": "CITA-1001",              "description": "Identificador único de la cita" },
+              "paciente":     { "type": "string",  "example": "Ana Torres",             "description": "Nombre completo del paciente" },
+              "correo":       { "type": "string",  "example": "ana.torres@email.com",   "description": "Correo electrónico del paciente" },
+              "especialidad": { "type": "string",  "example": "Cardiología",            "description": "Especialidad médica" },
+              "fechaCita":    { "type": "string",  "example": "2026-06-15",             "description": "Fecha de la cita (YYYY-MM-DD)" },
+              "sede":         { "type": "string",  "example": "Centro Norte",           "description": "Sede del centro médico" },
+              "valor":        { "type": "number",  "example": 45.50,                   "description": "Valor en USD (mayor a 0)" }
+            }
+          },
+          "CitaAceptada": {
+            "type": "object",
+            "properties": {
+              "status":  { "type": "string", "example": "ACEPTADA" },
+              "idCita":  { "type": "string", "example": "CITA-1001" },
+              "mensaje": { "type": "string", "example": "Cita registrada y flujo de integración iniciado correctamente" }
+            }
+          },
+          "ErrorValidacion": {
+            "type": "object",
+            "properties": {
+              "status":  { "type": "string", "example": "RECHAZADA" },
+              "idCita":  { "type": "string", "example": "N/A" },
+              "errores": { "type": "array", "items": { "type": "string" }, "example": ["paciente: El campo paciente es obligatorio"] }
+            }
+          },
+          "ErrorNegocio": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "example": "RECHAZADA" },
+              "idCita": { "type": "string", "example": "CITA-1001" },
+              "error":  { "type": "string", "example": "La fechaCita no puede ser una fecha pasada" }
+            }
+          },
+          "ListaCitas": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 1 },
+              "citas": { "type": "array", "items": { "$ref": "#/components/schemas/CitaRequest" } }
+            }
+          }
+        }
+      }
+    };
+
+    SwaggerUIBundle({
+      spec,
+      dom_id:   '#swagger-ui',
+      presets:  [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      layout:   'StandaloneLayout',
+      deepLinking:              true,
+      defaultModelsExpandDepth: 2,
+      defaultModelExpandDepth:  2,
+      displayRequestDuration:   true,
+      tryItOutEnabled:          true
+    });
+  </script>
+</body>
+</html>
